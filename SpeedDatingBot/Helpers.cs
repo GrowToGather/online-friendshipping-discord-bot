@@ -4,14 +4,15 @@ namespace SpeedDatingBot
 {
     public static class Helpers
     {
-        public static string ENV(string key)
+        public static string Env(string key)
         {
-            string toReturn = Environment.GetEnvironmentVariable(key.ToUpper());
+            string toReturn = Environment.GetEnvironmentVariable(key.ToUpper())?.Trim();
+             
             if(string.IsNullOrWhiteSpace(toReturn))
             {
                 return null;
             }
-            return toReturn.Trim();
+            return toReturn;
         }
     }
 }
