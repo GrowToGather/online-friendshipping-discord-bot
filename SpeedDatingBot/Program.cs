@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Discord;
@@ -32,6 +33,8 @@ namespace SpeedDatingBot
         {
             _client.Log += LogAsync;
             _client.MessageReceived += HandleCommandAsync;
+            _commands.CommandExecuted += OnCommandExecutedAsync;
+            
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
 
             await _client.LoginAsync(TokenType.Bot, Env("TOKEN"));
@@ -47,6 +50,19 @@ namespace SpeedDatingBot
                 await Console.Error.WriteLineAsync(msg.Exception?.Message);
                 await Console.Error.WriteLineAsync(msg.Exception?.StackTrace ?? "");
             }
+        }
+
+        public async Task OnCommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
+        {
+            if (!string.IsNullOrEmpty(result?.ErrorReason))
+            {
+                await context.Channel.SendMessageAsync(result.ErrorReason);
+                await LogAsync(new LogMessage(LogSeverity.Info, "CommandExecution", result.ErrorReason));
+            }
+
+            string commandName = command.IsSpecified ? command.Value.Name : "A command";
+            await LogAsync(new LogMessage(LogSeverity.Info, "CommandExecution",
+                $"{commandName} was executed at {DateTime.UtcNow}"));
         }
 
         private async Task HandleCommandAsync(SocketMessage messageParam)
