@@ -22,5 +22,12 @@ namespace SpeedDatingBot
             sendTTSMessages: PermValue.Allow,
             readMessageHistory: PermValue.Allow
         );
+
+        public static readonly OverwritePermissions FullDeny = new OverwritePermissions(
+            sendMessages: PermValue.Deny,
+            connect: PermValue.Deny
+        );
+        
+        
     }
 }
