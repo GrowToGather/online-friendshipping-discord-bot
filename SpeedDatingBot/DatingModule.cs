@@ -165,9 +165,13 @@ namespace SpeedDatingBot
 
         private async Task AnnounceOneMinuteLeftandWaitOneMinute()
         {
-            var message = await Context.Guild.GetTextChannel(810308969985212436).SendMessageAsync($"One minute left @here");
-            await Task.Delay(60000);
+            SocketTextChannel announcementChannel = Context.Guild.GetTextChannel(810308969985212436);
+            var message = await announcementChannel.SendMessageAsync("One minute left @here");
+            await Task.Delay(50000);
+            var message2 = await announcementChannel.SendMessageAsync("10 seconds left");
+            await Task.Delay(10000);
             await message.DeleteAsync();
+            await message2.DeleteAsync();
         }
         
     }
