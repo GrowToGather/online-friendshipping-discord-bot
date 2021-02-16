@@ -25,9 +25,14 @@ namespace SpeedDatingBot
 
         public static readonly OverwritePermissions FullDeny = new OverwritePermissions(
             sendMessages: PermValue.Deny,
-            connect: PermValue.Deny
+            connect: PermValue.Deny,
+            viewChannel: PermValue.Deny
         );
-        
-        
+
+        public static readonly OverwritePermissions ConnectVoice = new OverwritePermissions(
+            connect: PermValue.Allow,
+            speak: PermValue.Allow,
+            useVoiceActivation: PermValue.Allow
+        );
     }
 }
