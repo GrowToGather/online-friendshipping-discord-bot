@@ -1,18 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
-using Discord.Rest;
 using Discord.WebSocket;
-using System.Text.Json;
+using Microsoft.VisualBasic;
 
 namespace SpeedDatingBot
 {
+    [RequireRole("Moderator")]
     public class DatingModule : ModuleBase<SocketCommandContext>
     {
         private DiscordSocketClient _client;
@@ -31,14 +27,13 @@ namespace SpeedDatingBot
         [Command("startdating", RunMode = RunMode.Async)]
         [Alias("startdate", "date")]
         [Summary("Start the dating session")]
-        public async Task StartDatingAsync(int minutes = 10, int sessions = 20)
+        public async Task StartDatingAsync(int minutes = 10, int sessions = 12)
         {
             SocketVoiceChannel waitingRoom = Context.Guild.GetVoiceChannel(_id);
 
 
             ulong botRoleId = Context.Guild.Roles.FirstOrDefault(
                 x => x.Members.Any(y => y.Id == _client.CurrentUser.Id) && x.IsManaged)?.Id ?? 0;
-
             ICategoryChannel datingCategory = await Context.Guild.CreateCategoryChannelAsync(_datingRoomCategoryName,
                 x =>
                     x.PermissionOverwrites = new List<Overwrite>()
@@ -56,12 +51,12 @@ namespace SpeedDatingBot
             _session.DatingCategoryId = datingCategory.Id;
             _session.InSession = true;
 
-            int boy = 1;
-            int girl = 1;
+            var boy = 1;
+            var girl = 1;
 
             foreach (var user in waitingRoom.Users)
             {
-                int channelIndex = 0;
+                int channelIndex;
                 if (user.Roles.Any(x => x.Name == "Boy"))
                 {
                     channelIndex = boy;
@@ -87,11 +82,12 @@ namespace SpeedDatingBot
 
         private async Task TimeSwapRooms(int minutes, int sessions)
         {
-            for (int i = 0;
-                i != sessions;
-                i++) // any negative number will cause this to go infinitely. It will then have to be manually stopped
+            // any negative number will cause this to go infinitely. It will then have to be manually stopped
+            for (int i = 0; i != sessions; i++)
             {
-                await Task.Delay(minutes * 60 * 1000);
+                await Task.Delay((minutes - 1) * 60 * 1000);
+                if (!_session.InSession) return;
+                await AnnounceOneMinuteLeftandWaitOneMinute();
                 if (!_session.InSession) return;
                 await SwapRooms();
             }
@@ -158,12 +154,21 @@ namespace SpeedDatingBot
         {
             SocketCategoryChannel datingCategory = Context.Guild.GetCategoryChannel(_session.DatingCategoryId);
 
-            IVoiceChannel voiceChannel = (IVoiceChannel) datingCategory.Channels.FirstOrDefault(x => x.Position == offset + 1) ??
-                                         await Context.Guild.CreateVoiceChannelAsync("Breakout room",
-                                             x => x.CategoryId = voiceCategoryId);
+            IVoiceChannel voiceChannel =
+                (IVoiceChannel) datingCategory.Channels.FirstOrDefault(x => x.Position == offset + 1) ??
+                await Context.Guild.CreateVoiceChannelAsync("Breakout room",
+                    x => x.CategoryId = voiceCategoryId);
 
             await voiceChannel.AddPermissionOverwriteAsync(user, Overwrites.ConnectVoice);
             return voiceChannel;
         }
+
+        private async Task AnnounceOneMinuteLeftandWaitOneMinute()
+        {
+            var message = await Context.Guild.GetTextChannel(810308969985212436).SendMessageAsync($"One minute left @here");
+            await Task.Delay(60000);
+            await message.DeleteAsync();
+        }
+        
     }
 }
