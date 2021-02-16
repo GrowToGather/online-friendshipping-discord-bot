@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
@@ -87,7 +90,7 @@ namespace SpeedDatingBot
             {
                 await Task.Delay((minutes - 1) * 60 * 1000);
                 if (!_session.InSession) return;
-                await AnnounceOneMinuteLeftandWaitOneMinute();
+                await AnnounceOneMinuteLeftAndWaitOneMinute();
                 if (!_session.InSession) return;
                 await SwapRooms();
             }
@@ -101,9 +104,9 @@ namespace SpeedDatingBot
         public async Task StopDatingSession()
         {
             var datingCategory = Context.Guild.GetCategoryChannel(_session.DatingCategoryId);
-            var channels = from channel in datingCategory.Channels select channel as SocketVoiceChannel;
+            var socketVoiceChannels = (from channel in datingCategory.Channels select channel as SocketVoiceChannel).ToArray();
 
-            SocketVoiceChannel[] socketVoiceChannels = channels as SocketVoiceChannel[] ?? channels.ToArray();
+            // SocketVoiceChannel[] socketVoiceChannels = channels as SocketVoiceChannel[] ?? channels.ToArray();
             foreach (SocketGuildUser users in socketVoiceChannels.SelectMany(c => c.Users))
             {
                 await users.ModifyAsync(u =>
@@ -124,25 +127,19 @@ namespace SpeedDatingBot
         public async Task SwapRooms()
         {
             var datingCategory = Context.Guild.GetCategoryChannel(_session.DatingCategoryId);
-            var channels = from channel in datingCategory.Channels
+            var socketVoiceChannels = 
+                (from channel in datingCategory.Channels
                 orderby channel.Position
-                select channel as SocketVoiceChannel;
-            List<SocketVoiceChannel> socketVoiceChannels = new List<SocketVoiceChannel>();
-            foreach (var channel in channels)
-            {
-                socketVoiceChannels.Add(channel);
-            }
+                select channel as SocketVoiceChannel).ToArray();
 
-            // IVoiceChannel[] socketVoiceChannels = channels as SocketVoiceChannel[] ?? list.ToArray();
             ulong previousUserId = 0;
-            int count = socketVoiceChannels.Count;
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < socketVoiceChannels.Length; i++)
             {
                 IGuildUser toBeMoved = socketVoiceChannels[i].Users
                     .FirstOrDefault(x => x.Roles.Any(y => y.Name == "Boy") && x.Id != previousUserId);
                 if (toBeMoved == null) continue;
                 previousUserId = toBeMoved.Id;
-                SocketVoiceChannel newChannel = socketVoiceChannels[(i + 1) % count];
+                SocketVoiceChannel newChannel = socketVoiceChannels[(i + 1) % socketVoiceChannels.Length];
                 await newChannel.AddPermissionOverwriteAsync(toBeMoved, Overwrites.ConnectVoice);
                 await socketVoiceChannels[i].RemovePermissionOverwriteAsync(toBeMoved);
                 await toBeMoved.ModifyAsync(user => user.Channel = newChannel);
@@ -163,15 +160,25 @@ namespace SpeedDatingBot
             return voiceChannel;
         }
 
-        private async Task AnnounceOneMinuteLeftandWaitOneMinute()
+        private async Task AnnounceOneMinuteLeftAndWaitOneMinute()
         {
             SocketTextChannel announcementChannel = Context.Guild.GetTextChannel(810308969985212436);
-            var message = await announcementChannel.SendMessageAsync("One minute left @here");
-            await Task.Delay(50000);
-            var message2 = await announcementChannel.SendMessageAsync("10 seconds left");
-            await Task.Delay(10000);
+            var message = await announcementChannel.SendMessageAsync("60 seconds left @here");
+            await Task.Delay(5000);
+            for (int i = 55; i > 0; i = i - 5)
+            {
+                Stopwatch watch = new Stopwatch();
+                watch.Start();
+                await message.ModifyAsync(x => x.Content = $"{i} seconds left @here");
+                watch.Stop();
+                var delay = 5000 - (int) watch.ElapsedMilliseconds;
+                await Task.Delay(delay > 0 ? delay : 0);
+                if (!_session.InSession)
+                {
+                    break;
+                }
+            }
             await message.DeleteAsync();
-            await message2.DeleteAsync();
         }
         
     }
