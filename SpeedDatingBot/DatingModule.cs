@@ -18,20 +18,20 @@ namespace SpeedDatingBot
         private DiscordSocketClient _client;
         private DatingSession _session;
         private ulong _id;
-        private string _name;
+        private string _datingRoomCategoryName;
 
         public DatingModule(DiscordSocketClient client, DatingSession session)
         {
             _client = client;
             _session = session;
             _id = 810729843280183316;
-            _name = $"Breakout room ";
+            _datingRoomCategoryName = "Dating Rooms";
         }
 
         [Command("startdating", RunMode = RunMode.Async)]
         [Alias("startdate", "date")]
         [Summary("Start the dating session")]
-        public async Task StartDatingAsync(int minutes = 10, int sessions = 10)
+        public async Task StartDatingAsync(int minutes = 10, int sessions = 20)
         {
             SocketVoiceChannel waitingRoom = Context.Guild.GetVoiceChannel(_id);
 
@@ -39,20 +39,22 @@ namespace SpeedDatingBot
             ulong botRoleId = Context.Guild.Roles.FirstOrDefault(
                 x => x.Members.Any(y => y.Id == _client.CurrentUser.Id) && x.IsManaged)?.Id ?? 0;
 
-            ICategoryChannel datingCategory = await Context.Guild.CreateCategoryChannelAsync("Dating Rooms", x =>
-                x.PermissionOverwrites = new List<Overwrite>()
-                {
-                    new Overwrite(Context.Guild.EveryoneRole.Id, PermissionTarget.Role, Overwrites.FullDeny),
-                    new Overwrite(botRoleId, PermissionTarget.Role, new OverwritePermissions(
-                        moveMembers: PermValue.Allow,
-                        viewChannel: PermValue.Allow,
-                        manageChannel: PermValue.Allow,
-                        manageRoles: PermValue.Allow
-                    ))
-                }
+            ICategoryChannel datingCategory = await Context.Guild.CreateCategoryChannelAsync(_datingRoomCategoryName,
+                x =>
+                    x.PermissionOverwrites = new List<Overwrite>()
+                    {
+                        new Overwrite(Context.Guild.EveryoneRole.Id, PermissionTarget.Role, Overwrites.FullDeny),
+                        new Overwrite(botRoleId, PermissionTarget.Role, new OverwritePermissions(
+                            moveMembers: PermValue.Allow,
+                            viewChannel: PermValue.Allow,
+                            manageChannel: PermValue.Allow,
+                            manageRoles: PermValue.Allow
+                        ))
+                    }
             );
 
             _session.DatingCategoryId = datingCategory.Id;
+            _session.InSession = true;
 
             int boy = 1;
             int girl = 1;
@@ -75,12 +77,26 @@ namespace SpeedDatingBot
                     continue;
                 }
 
-                Console.WriteLine($"Channel Index is {channelIndex}");
-
                 IVoiceChannel newChannel = await FindOrCreateVoiceChannelAsync(channelIndex, user, datingCategory.Id);
                 await newChannel.AddPermissionOverwriteAsync(user, Overwrites.ConnectVoice);
                 await user.ModifyAsync(prop => prop.Channel = Optional.Create(newChannel));
             }
+
+            await TimeSwapRooms(minutes, sessions);
+        }
+
+        private async Task TimeSwapRooms(int minutes, int sessions)
+        {
+            for (int i = 0;
+                i != sessions;
+                i++) // any negative number will cause this to go infinitely. It will then have to be manually stopped
+            {
+                await Task.Delay(minutes * 60 * 1000);
+                if (!_session.InSession) return;
+                await SwapRooms();
+            }
+
+            await StopDatingSession(); //stop dating if the session loop exits without returning from a manual command
         }
 
         [Command("stopdating", RunMode = RunMode.Async)]
@@ -104,7 +120,7 @@ namespace SpeedDatingBot
             }
 
             await datingCategory.DeleteAsync();
-            _session.EndDatingSession();
+            _session.InSession = false;
         }
 
         [Command("swap", RunMode = RunMode.Async)]
@@ -140,11 +156,12 @@ namespace SpeedDatingBot
         private async Task<IVoiceChannel> FindOrCreateVoiceChannelAsync(int offset, IGuildUser user,
             ulong voiceCategoryId)
         {
-            string name = _name + offset;
-            Console.WriteLine(name);
-            IVoiceChannel voiceChannel = (IVoiceChannel) Context.Guild.Channels.FirstOrDefault(x => x.Name == name) ??
-                                         await Context.Guild.CreateVoiceChannelAsync(name,
+            SocketCategoryChannel datingCategory = Context.Guild.GetCategoryChannel(_session.DatingCategoryId);
+
+            IVoiceChannel voiceChannel = (IVoiceChannel) datingCategory.Channels.FirstOrDefault(x => x.Position == offset + 1) ??
+                                         await Context.Guild.CreateVoiceChannelAsync("Breakout room",
                                              x => x.CategoryId = voiceCategoryId);
+
             await voiceChannel.AddPermissionOverwriteAsync(user, Overwrites.ConnectVoice);
             return voiceChannel;
         }

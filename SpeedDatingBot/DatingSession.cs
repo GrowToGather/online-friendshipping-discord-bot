@@ -11,18 +11,9 @@ namespace SpeedDatingBot
         {
             InSession = false;
         }
-
-        public void StartDatingSession()
-        {
-            InSession = true;
-        }
-
-        public void EndDatingSession()
-        {
-            InSession = false;
-        }
         
-        public bool InSession { get; private set; }
+        
+        public bool InSession { get; set; }
         public ulong DatingCategoryId { get; set; }
     }
 }
