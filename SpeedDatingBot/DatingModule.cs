@@ -8,6 +8,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.VisualBasic;
+using SpeedDatingBot.Models;
 
 namespace SpeedDatingBot
 {
@@ -96,6 +97,14 @@ namespace SpeedDatingBot
             }
 
             await StopDatingSession(); //stop dating if the session loop exits without returning from a manual command
+        }
+
+        [Command("ping", RunMode = RunMode.Async)]
+        public async Task PingAsync()
+        {
+            using var context = new DiscordContext();
+            User[] users = await context.Users.ToArrayAsync();
+            await ReplyAsync(users.Length.ToString());
         }
 
         [Command("stopdating", RunMode = RunMode.Async)]

@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
@@ -16,20 +17,22 @@ namespace SpeedDatingBot
         private DiscordSocketClient _client;
         private CommandService _commands;
         private IServiceProvider _services;
+        private Config _config;
 
-        // static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
-        static void Main(string[] args)
-        {
-            using (var context = new DiscordContext())
-            {
-                var users = context.Users.ToArray();
-                Console.WriteLine(users.Length);
-            }
-        }
+        static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
+        // static void Main(string[] args)
+        // {
+        //     using (var context = new DiscordContext())
+        //     {
+        //         var users = context.Users.ToArray();
+        //         Console.WriteLine(users.Length);
+        //     }
+        // }
         private Program()
         {
             _client = new DiscordSocketClient();
             _commands = new CommandService();
+            _config = new Config();
             _services = new ServiceCollection()
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
@@ -40,12 +43,12 @@ namespace SpeedDatingBot
         private async Task MainAsync()
         {
             _client.Log += LogAsync;
+            _client.UserJoined += OnUserJoin;
             _client.MessageReceived += HandleCommandAsync;
             _commands.CommandExecuted += OnCommandExecutedAsync;
-            
-            await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
 
-            await _client.LoginAsync(TokenType.Bot, Env("TOKEN"));
+            await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+            await _client.LoginAsync(TokenType.Bot, _config.ConfigData.Token);
             await _client.StartAsync();
             await Task.Delay(-1);
         }
@@ -60,7 +63,7 @@ namespace SpeedDatingBot
             }
         }
 
-        public async Task OnCommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
+        private async Task OnCommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
         {
             if (!string.IsNullOrEmpty(result?.ErrorReason))
             {
@@ -71,6 +74,12 @@ namespace SpeedDatingBot
             string commandName = command.IsSpecified ? command.Value.Name : "A command";
             await LogAsync(new LogMessage(LogSeverity.Info, "CommandExecution",
                 $"{commandName} was executed at {DateTime.UtcNow}"));
+        }
+
+        private async Task OnUserJoin(SocketGuildUser user)
+        {
+            Console.WriteLine(user.Username);
+            await user.SendMessageAsync("Hello new user!");
         }
 
         private async Task HandleCommandAsync(SocketMessage messageParam)
