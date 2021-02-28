@@ -6,6 +6,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
+using SpeedDatingBot.Models;
 using static SpeedDatingBot.Helpers;
 
 namespace SpeedDatingBot
@@ -16,8 +17,15 @@ namespace SpeedDatingBot
         private CommandService _commands;
         private IServiceProvider _services;
 
-        static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
-
+        // static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
+        static void Main(string[] args)
+        {
+            using (var context = new DiscordContext())
+            {
+                var users = context.Users.ToArray();
+                Console.WriteLine(users.Length);
+            }
+        }
         private Program()
         {
             _client = new DiscordSocketClient();
