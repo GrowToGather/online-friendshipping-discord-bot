@@ -14,7 +14,7 @@ public class Config
     public class Data
     {
         public string Token { get; set; }
-        public string DBConnectionString { get; set; }
+        public string DbConnectionString { get; set; }
     }
 }
 
