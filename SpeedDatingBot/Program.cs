@@ -1,14 +1,12 @@
 using System;
-using System.Linq;
+using System.Globalization;
 using System.Reflection;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Discord;
+using Discord.Addons.Interactive;
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
-using SpeedDatingBot.Models;
-using static SpeedDatingBot.Helpers;
 
 namespace SpeedDatingBot
 {
@@ -20,14 +18,7 @@ namespace SpeedDatingBot
         private Config _config;
 
         static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
-        // static void Main(string[] args)
-        // {
-        //     using (var context = new DiscordContext())
-        //     {
-        //         var users = context.Users.ToArray();
-        //         Console.WriteLine(users.Length);
-        //     }
-        // }
+
         private Program()
         {
             _client = new DiscordSocketClient();
@@ -36,6 +27,7 @@ namespace SpeedDatingBot
             _services = new ServiceCollection()
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
+                .AddSingleton<InteractiveService>()
                 .AddSingleton(new DatingSession())
                 .BuildServiceProvider();
         }
@@ -63,7 +55,8 @@ namespace SpeedDatingBot
             }
         }
 
-        private async Task OnCommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
+        private async Task OnCommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context,
+            IResult result)
         {
             if (!string.IsNullOrEmpty(result?.ErrorReason))
             {
@@ -78,8 +71,8 @@ namespace SpeedDatingBot
 
         private async Task OnUserJoin(SocketGuildUser user)
         {
-            Console.WriteLine(user.Username);
-            await user.SendMessageAsync("Hello new user!");
+            await user.SendMessageAsync(
+                $"Hello {user.Username}. Welcome to Online Friendshipping. For you to participate, I need to get to know you a bit. Please type !welcome when you are ready to begin.");
         }
 
         private async Task HandleCommandAsync(SocketMessage messageParam)
