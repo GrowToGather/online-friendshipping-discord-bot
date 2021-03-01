@@ -27,10 +27,20 @@ namespace SpeedDatingBot.Module
         {
             SocketUser messageAuthor = Context.Message.Author;
             DiscordContext context = new DiscordContext();
-            User newUser = await context.Users.FirstOrDefaultAsync(x => x.Id == messageAuthor.Id);
-            if (newUser == null)
+            bool isNew;
+            User newUser;
+            const string timeOutMessage = "You took too long. Please rerun the command by typing welcome.";
+            
+            var userFromDatabase = await context.Users.FindAsync(messageAuthor.Id);
+            if (userFromDatabase != null)
+            {
+                newUser = userFromDatabase;
+                isNew = false;
+            }
+            else
             {
                 newUser = new User();
+                isNew = true;
             }
 
             SocketMessage response;
@@ -39,16 +49,31 @@ namespace SpeedDatingBot.Module
 
             await ReplyAsync("What is your First Name");
             response = await NextMessageAsync();
+            if (response == null)
+            {
+                await ReplyAsync(timeOutMessage);
+                return;
+            }
             newUser.FirstName = response.Content;
 
             await ReplyAsync("What is your Last Name");
             response = await NextMessageAsync();
+            if (response == null)
+            {
+                await ReplyAsync(timeOutMessage);
+                return;
+            }
             newUser.LastName = response.Content;
 
             while (true)
             {
                 await ReplyAsync("When is your birthday? DD.MM.YYYY");
                 response = await NextMessageAsync();
+                if (response == null)
+                {
+                    await ReplyAsync(timeOutMessage);
+                    return;
+                }
                 if (DateTime.TryParseExact(response.Content, "dd.M.yyyy", CultureInfo.InvariantCulture,
                     DateTimeStyles.None,
                     out birthday))
@@ -71,6 +96,11 @@ namespace SpeedDatingBot.Module
             {
                 await ReplyAsync("What is your Gender? M or F");
                 response = await NextMessageAsync();
+                if (response == null)
+                {
+                    await ReplyAsync(timeOutMessage);
+                    return;
+                }
                 if (response.Content.ToLower().StartsWith("m") || response.Content.ToLower().StartsWith("f"))
                 {
                     break;
@@ -81,6 +111,11 @@ namespace SpeedDatingBot.Module
 
             newUser.IsGirl = response.Content.ToLower() == "f";
             newUser.Id = messageAuthor.Id;
+
+            if (isNew)
+            {
+                await context.Users.AddAsync(newUser);
+            }
             await context.SaveChangesAsync();
             await UpdateUserRole(messageAuthor, newUser.IsGirl, $"{newUser.FirstName} {newUser.LastName}");
             await ReplyAsync("Thank you! Enjoy Online Friendshipping");
