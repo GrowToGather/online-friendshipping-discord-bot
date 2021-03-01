@@ -27,6 +27,7 @@ namespace SpeedDatingBot
             _services = new ServiceCollection()
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
+                .AddSingleton(_config)
                 .AddSingleton<InteractiveService>()
                 .AddSingleton(new DatingSession())
                 .BuildServiceProvider();

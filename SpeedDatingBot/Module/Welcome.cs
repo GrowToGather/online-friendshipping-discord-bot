@@ -12,23 +12,38 @@ namespace SpeedDatingBot.Module
 {
     public class Welcome : InteractiveBase
     {
+        private Config _config;
+        private DiscordSocketClient _client;
+
+        public Welcome(Config config, DiscordSocketClient client)
+        {
+            _config = config;
+            _client = client;
+        }
+
         [Command("welcome", RunMode = RunMode.Async)]
+        [RequireContext(ContextType.DM)]
         public async Task WelcomeAsync()
         {
             SocketUser messageAuthor = Context.Message.Author;
             DiscordContext context = new DiscordContext();
-            User newuser = (await context.Users.FirstOrDefaultAsync(x => x.Id == messageAuthor.Id)).IfDefaultGiveMe(new User());
+            User newUser = await context.Users.FirstOrDefaultAsync(x => x.Id == messageAuthor.Id);
+            if (newUser == null)
+            {
+                newUser = new User();
+            }
+
             SocketMessage response;
             DateTime birthday;
 
 
             await ReplyAsync("What is your First Name");
             response = await NextMessageAsync();
-            newuser.FirstName = response.Content;
+            newUser.FirstName = response.Content;
 
             await ReplyAsync("What is your Last Name");
             response = await NextMessageAsync();
-            newuser.LastName = response.Content;
+            newUser.LastName = response.Content;
 
             while (true)
             {
@@ -38,13 +53,19 @@ namespace SpeedDatingBot.Module
                     DateTimeStyles.None,
                     out birthday))
                 {
+                    await ReplyAsync(
+                        $"Please confirm your birthday is {birthday.ToString("MMMM")} {birthday.Day} {birthday.Year}? " +
+                        $"Type Y or N");
+                    response = await NextMessageAsync();
+                    if (!response.Content.ToLower().StartsWith("y")) continue;
+
                     break;
                 }
 
                 await ReplyAsync("Please make sure your birthday uses the correct format");
             }
 
-            newuser.Birthday = birthday;
+            newUser.Birthday = birthday;
 
             while (true)
             {
@@ -58,9 +79,23 @@ namespace SpeedDatingBot.Module
                 await ReplyAsync("Please make sure you're using M or F");
             }
 
-            newuser.IsGirl = response.Content.ToLower() == "f";
-            newuser.Id = messageAuthor.Id;
+            newUser.IsGirl = response.Content.ToLower() == "f";
+            newUser.Id = messageAuthor.Id;
             await context.SaveChangesAsync();
+            await UpdateUserRole(messageAuthor, newUser.IsGirl, $"{newUser.FirstName} {newUser.LastName}");
+            await ReplyAsync("Thank you! Enjoy Online Friendshipping");
+        }
+
+        public async Task UpdateUserRole(SocketUser user, bool isGirl, string nickname)
+        {
+            SocketGuild guild = _client.Guilds.First(x => x.Id == _config.ConfigData.GuildId);
+            SocketGuildUser guildUser = guild.GetUser(user.Id);
+
+
+            await guildUser.RemoveRolesAsync(
+                guildUser.Roles.Where(role => role.Name != "Moderator" && !role.IsEveryone));
+            await guildUser.AddRoleAsync(guild.Roles.FirstOrDefault(role => role.Name == (isGirl ? "Girl" : "Boy")));
+            await guildUser.ModifyAsync(x => x.Nickname = nickname);
         }
     }
 }
