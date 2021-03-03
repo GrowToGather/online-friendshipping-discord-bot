@@ -23,6 +23,13 @@ namespace SpeedDatingBot
             readMessageHistory: PermValue.Allow
         );
 
+        public static readonly OverwritePermissions BotPermissions = new OverwritePermissions(
+            moveMembers: PermValue.Allow,
+            viewChannel: PermValue.Allow,
+            manageChannel: PermValue.Allow,
+            manageRoles: PermValue.Allow
+        );
+
         public static readonly OverwritePermissions FullDeny = new OverwritePermissions(
             sendMessages: PermValue.Deny,
             connect: PermValue.Deny,
