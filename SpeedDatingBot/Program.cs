@@ -8,6 +8,7 @@ using Discord.Addons.Interactive;
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
+using SpeedDatingBot.Models;
 
 namespace SpeedDatingBot
 {
@@ -38,6 +39,7 @@ namespace SpeedDatingBot
         {
             _client.Log += LogAsync;
             _client.UserJoined += OnUserJoin;
+            _client.UserLeft += OnLUserLeave;
             _client.MessageReceived += HandleCommandAsync;
             _commands.CommandExecuted += OnCommandExecutedAsync;
 
@@ -75,6 +77,13 @@ namespace SpeedDatingBot
         {
             await user.SendMessageAsync(
                 $"Hello {user.Username}. Welcome to Online Friendshipping. For you to participate, I need to get to know you a bit. Please type !welcome when you are ready to begin.");
+        }
+
+        private async Task OnLUserLeave(SocketGuildUser leavingUser)
+        {
+            await using var ctx = new DiscordContext();
+            ctx.Users.Remove(await ctx.Users.FindAsync(leavingUser.Id));
+            await ctx.SaveChangesAsync();
         }
 
         private async Task HandleCommandAsync(SocketMessage messageParam)
