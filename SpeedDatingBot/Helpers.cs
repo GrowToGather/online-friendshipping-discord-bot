@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Discord;
+using Discord.WebSocket;
 
 namespace SpeedDatingBot
 {
@@ -15,11 +18,15 @@ namespace SpeedDatingBot
             }
             return toReturn;
         }
-        
-        public static T IfDefaultGiveMe<T>(this T value, T alternate)
+
+        public static async Task RemoveVoiceChannel(this SocketVoiceChannel toRemove, IVoiceChannel moveTo = null)
         {
-            if (value.Equals(default(T))) return alternate;
-            return value;
+            foreach (var user in toRemove.Users)
+            {
+                await user.ModifyAsync(u => u.Channel = Optional.Create(moveTo));
+            }
+
+            await toRemove.DeleteAsync();
         }
     }
 }

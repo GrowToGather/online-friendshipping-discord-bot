@@ -57,23 +57,22 @@ namespace SpeedDatingBot.Module
             {
                 dbUsers = await context.Users.ToArrayAsync();
             }
-            
-            int[] randomNumbers = dbUsers.Select(x => rand.Next()).ToArray();
-            var people = (from dbUser in dbUsers
-                join guildUser in waitingRoomUsers on dbUser.Id equals guildUser.Id
-                select new
-                {
-                    GuildUser = guildUser,
-                    IsGirl = dbUser.IsGirl
-                }).ToArray();
-            var boys = people.Where(p => !p.IsGirl).Zip(randomNumbers,
-                    (person, order) => new {GuildUser = person.GuildUser, Order = order})
-                .OrderBy(person => person.Order)
-                .Select(person => person.GuildUser);
-            var girls = people.Where(p => p.IsGirl).Select(person => person.GuildUser);
-            foreach ((SocketGuildUser Boy, SocketGuildUser Girl) couple in boys.Zip(girls))
+
+            int[] randomNumbers = dbUsers.Select(_ => rand.Next()).ToArray();
+            var people = dbUsers.Join(waitingRoomUsers, dbUser => dbUser.Id, guildUser => guildUser.Id,
+                    (dbUser, guildUser) => new
+                    {
+                        GuildUser = guildUser,
+                        IsGirl = dbUser.IsGirl
+                    })
+                .Zip(randomNumbers, (person, order) => new {Person = person, Order = order})
+                .OrderBy(x => x.Order)
+                .Select(x => x.Person).ToArray();
+            var boys = from person in people where !person.IsGirl select person.GuildUser;
+            var girls = from person in people where person.IsGirl select person.GuildUser;
+            foreach (var (boy, girl) in boys.Zip(girls))
             {
-                await MoveToNewRoomAsync(couple.Boy, couple.Girl, datingCategoryId);
+                await MoveToNewRoomAsync(datingCategoryId, boy, girl);
             }
         }
 
@@ -92,15 +91,16 @@ namespace SpeedDatingBot.Module
             await StopDatingSession(); //stop dating if the session loop exits without returning from a manual command
         }
 
-        public async Task MoveToNewRoomAsync(SocketGuildUser boy, SocketGuildUser girl, ulong voiceCategoryId)
+        public async Task MoveToNewRoomAsync(ulong voiceCategoryId, params SocketGuildUser[] users)
         {
             RestVoiceChannel voiceChannel = await Context.Guild.CreateVoiceChannelAsync("Breakout room",
                 x => x.CategoryId = voiceCategoryId);
 
-            await voiceChannel.AddPermissionOverwriteAsync(boy, Overwrites.ConnectVoice);
-            await voiceChannel.AddPermissionOverwriteAsync(girl, Overwrites.ConnectVoice);
-            await boy.ModifyAsync(user => user.Channel = voiceChannel);
-            await girl.ModifyAsync(user => user.Channel = voiceChannel);
+            foreach (var user in users)
+            {
+                await voiceChannel.AddPermissionOverwriteAsync(user, Overwrites.ConnectVoice);
+                await user.ModifyAsync(u => u.Channel = voiceChannel);
+            }
         }
 
         [Command("ping", RunMode = RunMode.Async)]
@@ -117,24 +117,24 @@ namespace SpeedDatingBot.Module
         public async Task StopDatingSession()
         {
             var datingCategory = Context.Guild.GetCategoryChannel(_session.DatingCategoryId);
-            var socketVoiceChannels =
-                (from channel in datingCategory.Channels select channel as SocketVoiceChannel).ToArray();
-
-            // SocketVoiceChannel[] socketVoiceChannels = channels as SocketVoiceChannel[] ?? channels.ToArray();
-            foreach (SocketGuildUser users in socketVoiceChannels.SelectMany(c => c.Users))
-            {
-                await users.ModifyAsync(u =>
-                    u.Channel = Optional.Create((IVoiceChannel) Context.Guild.GetVoiceChannel(_waitingRoomId)));
-            }
-
-            foreach (SocketVoiceChannel channel in socketVoiceChannels)
-            {
-                await channel.DeleteAsync();
-            }
+            await EndBreakoutSession(datingCategory);
 
             await datingCategory.DeleteAsync();
             _session.InSession = false;
         }
+
+        private async Task EndBreakoutSession(SocketCategoryChannel datingCategory)
+        {
+            var socketVoiceChannels =
+                from channel in datingCategory.Channels select channel as SocketVoiceChannel;
+
+            foreach (SocketVoiceChannel channel in socketVoiceChannels)
+            {
+                await channel.RemoveVoiceChannel(Context.Guild.GetVoiceChannel(_waitingRoomId));
+            }
+        }
+
+        
 
         [Command("swap", RunMode = RunMode.Async)]
         [Summary("Swap people to another room")]
