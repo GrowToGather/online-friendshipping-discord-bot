@@ -19,7 +19,7 @@ namespace SpeedDatingBot
             return toReturn;
         }
 
-        public static async Task RemoveVoiceChannel(this SocketVoiceChannel toRemove, IVoiceChannel moveTo = null)
+        public static async Task RemoveVoiceChannelAsync(this SocketVoiceChannel toRemove, IVoiceChannel moveTo = null)
         {
             foreach (var user in toRemove.Users)
             {

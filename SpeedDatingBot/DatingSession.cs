@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Discord;
 using Discord.Commands;
+using Discord.Rest;
 using Discord.WebSocket;
 
 namespace SpeedDatingBot
@@ -13,6 +15,6 @@ namespace SpeedDatingBot
         }
 
         public bool InSession { get; set; }
-        public ulong DatingCategoryId { get; set; }
+        public ICategoryChannel DatingCategory { get; set; }
     }
 }

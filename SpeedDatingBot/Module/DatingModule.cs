@@ -30,7 +30,7 @@ namespace SpeedDatingBot.Module
         [Command("startdating", RunMode = RunMode.Async)]
         [Alias("startdate", "date")]
         [Summary("Start the dating session")]
-        public async Task StartDatingAsync(int minutes = 10, int sessions = 12)
+        public async Task StartDatingAsync(int minutes = 0, int sessions = -1)
         {
             ulong botRoleId = Context.Guild.Roles.FirstOrDefault(
                 x => x.Members.Any(y => y.Id == _client.CurrentUser.Id) && x.IsManaged)?.Id ?? 0;
@@ -42,13 +42,18 @@ namespace SpeedDatingBot.Module
                         new Overwrite(botRoleId, PermissionTarget.Role, Overwrites.BotPermissions)
                     }
             );
-
-            _session.DatingCategoryId = datingCategory.Id;
+            
+            _session.DatingCategory = datingCategory;
             _session.InSession = true;
-            await StartBreakoutRooms(datingCategory.Id);
+            await StartBreakoutRooms();
+            if (minutes > 0)
+            {
+                await TimeSwapRooms(minutes, sessions);
+                await EndDatingSession();
+            }
         }
 
-        private async Task StartBreakoutRooms(ulong datingCategoryId)
+        private async Task StartBreakoutRooms()
         {
             Random rand = new Random();
             var waitingRoomUsers = Context.Guild.GetVoiceChannel(_waitingRoomId).Users;
@@ -72,29 +77,33 @@ namespace SpeedDatingBot.Module
             var girls = from person in people where person.IsGirl select person.GuildUser;
             foreach (var (boy, girl) in boys.Zip(girls))
             {
-                await MoveToNewRoomAsync(datingCategoryId, boy, girl);
+                await MoveToNewRoomAsync(boy, girl);
             }
         }
 
         private async Task TimeSwapRooms(int minutes, int sessions)
         {
             // any negative number will cause this to go infinitely. It will then have to be manually stopped
-            for (int i = 0; i != sessions; i++)
+            for (int i = 1; i != sessions; i++)
             {
-                await Task.Delay((minutes - 1) * 60 * 1000);
-                if (!_session.InSession) return;
-                await AnnounceOneMinuteLeftAndWaitOneMinute();
+                await WaitForBreakoutRooms(minutes);
                 if (!_session.InSession) return;
                 await SwapRooms();
             }
-
-            await StopDatingSession(); //stop dating if the session loop exits without returning from a manual command
+            await WaitForBreakoutRooms(minutes);
         }
 
-        public async Task MoveToNewRoomAsync(ulong voiceCategoryId, params SocketGuildUser[] users)
+        private async Task WaitForBreakoutRooms(int minutes)
+        {
+            await Task.Delay((minutes - 1) * 60 * 1000);
+            if (!_session.InSession) return;
+            await AnnounceOneMinuteLeftAndWaitOneMinute();
+        }
+
+        public async Task MoveToNewRoomAsync(params SocketGuildUser[] users)
         {
             RestVoiceChannel voiceChannel = await Context.Guild.CreateVoiceChannelAsync("Breakout room",
-                x => x.CategoryId = voiceCategoryId);
+                x => x.CategoryId = _session.DatingCategory.Id);
 
             foreach (var user in users)
             {
@@ -114,23 +123,26 @@ namespace SpeedDatingBot.Module
         [Command("stopdating", RunMode = RunMode.Async)]
         [Alias("enddate", "enddating", "stopdate")]
         [Summary("End the dating session")]
-        public async Task StopDatingSession()
+        public async Task EndDatingSession()
         {
-            var datingCategory = Context.Guild.GetCategoryChannel(_session.DatingCategoryId);
-            await EndBreakoutSession(datingCategory);
-
-            await datingCategory.DeleteAsync();
+            if (!_session.InSession) return;
+            
+            await EndBreakoutSession();
+            await _session.DatingCategory.DeleteAsync();
+            _session.DatingCategory = null;
             _session.InSession = false;
         }
 
-        private async Task EndBreakoutSession(SocketCategoryChannel datingCategory)
+        private async Task EndBreakoutSession()
         {
+            SocketCategoryChannel datingSocketCategory = Context.Guild.GetCategoryChannel(_session.DatingCategory.Id);
+
             var socketVoiceChannels =
-                from channel in datingCategory.Channels select channel as SocketVoiceChannel;
+                from channel in datingSocketCategory.Channels select channel as SocketVoiceChannel;
 
             foreach (SocketVoiceChannel channel in socketVoiceChannels)
             {
-                await channel.RemoveVoiceChannel(Context.Guild.GetVoiceChannel(_waitingRoomId));
+                await channel.RemoveVoiceChannelAsync(Context.Guild.GetVoiceChannel(_waitingRoomId));
             }
         }
 
@@ -140,24 +152,9 @@ namespace SpeedDatingBot.Module
         [Summary("Swap people to another room")]
         public async Task SwapRooms()
         {
-            var datingCategory = Context.Guild.GetCategoryChannel(_session.DatingCategoryId);
-            var socketVoiceChannels =
-                (from channel in datingCategory.Channels
-                    orderby channel.Position
-                    select channel as SocketVoiceChannel).ToArray();
-
-            ulong previousUserId = 0;
-            for (int i = 0; i < socketVoiceChannels.Length; i++)
-            {
-                IGuildUser toBeMoved = socketVoiceChannels[i].Users
-                    .FirstOrDefault(x => x.Roles.Any(y => y.Name == "Boy") && x.Id != previousUserId);
-                if (toBeMoved == null) continue;
-                previousUserId = toBeMoved.Id;
-                SocketVoiceChannel newChannel = socketVoiceChannels[(i + 1) % socketVoiceChannels.Length];
-                await newChannel.AddPermissionOverwriteAsync(toBeMoved, Overwrites.ConnectVoice);
-                await socketVoiceChannels[i].RemovePermissionOverwriteAsync(toBeMoved);
-                await toBeMoved.ModifyAsync(user => user.Channel = newChannel);
-            }
+            await EndBreakoutSession();
+            await Task.Delay(3000);
+            await StartBreakoutRooms();
         }
 
         private async Task AnnounceOneMinuteLeftAndWaitOneMinute()
