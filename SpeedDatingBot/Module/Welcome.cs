@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Discord.Addons.Interactive;
 using Discord.Commands;
-using Discord.Net.Rest;
 using Discord.WebSocket;
 using SpeedDatingBot.Models;
 
@@ -79,9 +78,12 @@ namespace SpeedDatingBot.Module
                     out birthday))
                 {
                     await ReplyAsync(
-                        $"Please confirm your birthday is {birthday.ToString("MMMM")} {birthday.Day} {birthday.Year}? " +
-                        $"Type Y or N");
+                        $"Please confirm your birthday is {birthday.ToString("MMMM")} {birthday.Day} {birthday.Year}? Type Y or N");
                     response = await NextMessageAsync();
+                    if (response == null)
+                    {
+                        await ReplyAsync(timeOutMessage);
+                    }
                     if (!response.Content.ToLower().StartsWith("y")) continue;
 
                     break;
