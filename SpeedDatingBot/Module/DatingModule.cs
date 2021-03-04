@@ -63,14 +63,15 @@ namespace SpeedDatingBot.Module
                 dbUsers = await context.Users.ToArrayAsync();
             }
 
-            int[] randomNumbers = dbUsers.Select(_ => rand.Next()).ToArray();
+            int[] randomNumbers = dbUsers.Select(_ => rand.Next(6)).ToArray();
             var people = dbUsers.Join(waitingRoomUsers, dbUser => dbUser.Id, guildUser => guildUser.Id,
                     (dbUser, guildUser) => new
                     {
                         GuildUser = guildUser,
-                        IsGirl = dbUser.IsGirl
+                        IsGirl = dbUser.IsGirl,
+                        Age = DateTime.Today.Year - dbUser.Birthday.Year
                     })
-                .Zip(randomNumbers, (person, order) => new {Person = person, Order = order})
+                .Zip(randomNumbers, (person, rand) => new {Person = person, Order = rand + person.Age})
                 .OrderBy(x => x.Order)
                 .Select(x => x.Person).ToArray();
             var boys = from person in people where !person.IsGirl select person.GuildUser;
