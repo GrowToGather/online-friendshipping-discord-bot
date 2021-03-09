@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Addons.Interactive;
 using Discord.Commands;
 using Discord.WebSocket;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SpeedDatingBot.Models;
 
@@ -34,6 +36,15 @@ namespace SpeedDatingBot
                 .BuildServiceProvider();
         }
 
+        public void ApplyMigrations(DiscordContext context) 
+        {
+            if (context.Database.GetPendingMigrations().Any()) 
+            {
+                context.Database.Migrate();
+            }
+        }
+
+        
         private async Task MainAsync()
         {
             _client.Log += LogAsync;
@@ -41,7 +52,10 @@ namespace SpeedDatingBot
             _client.UserLeft += OnLUserLeave;
             _client.MessageReceived += HandleCommandAsync;
             _commands.CommandExecuted += OnCommandExecutedAsync;
-
+            using (DiscordContext ctx = new DiscordContext())
+            {
+                ApplyMigrations(ctx);
+            }
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
             await _client.LoginAsync(TokenType.Bot, Env("TOKEN"));
             await _client.StartAsync();
