@@ -69,7 +69,7 @@ namespace SpeedDatingBot.Module
                     {
                         GuildUser = guildUser,
                         IsGirl = dbUser.IsGirl,
-                        Age = DateTime.Today.Year - dbUser.Birthday.Year
+                        Age = dbUser.Age
                     })
                 .Zip(randomNumbers, (person, rand) => new {Person = person, Order = rand + person.Age})
                 .OrderBy(x => x.Order)

@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SpeedDatingBot.Models
 {
@@ -11,5 +12,17 @@ namespace SpeedDatingBot.Models
         public string LastName { get; set; }
         public bool IsGirl { get; set; }
         public DateTime Birthday { get; set; }
+
+        [NotMapped]
+        public int Age
+        {
+            get
+            {
+                DateTime now = DateTime.Today;
+                int age = now.Year - Birthday.Year;
+                if (now < Birthday.AddYears(age)) age--;
+                return age;
+            }
+        }
     }
 }
