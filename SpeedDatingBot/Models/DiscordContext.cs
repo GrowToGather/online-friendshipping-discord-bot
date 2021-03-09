@@ -10,7 +10,7 @@ namespace SpeedDatingBot.Models
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseNpgsql(Env("DBConnectionString"));
+            optionsBuilder.UseNpgsql(Env("DBSTRING"));
         }
     }
 }

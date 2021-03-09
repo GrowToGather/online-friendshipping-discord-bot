@@ -43,7 +43,7 @@ namespace SpeedDatingBot
             _commands.CommandExecuted += OnCommandExecutedAsync;
 
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
-            await _client.LoginAsync(TokenType.Bot, Env("Token"));
+            await _client.LoginAsync(TokenType.Bot, Env("TOKEN"));
             await _client.StartAsync();
             await Task.Delay(-1);
         }
