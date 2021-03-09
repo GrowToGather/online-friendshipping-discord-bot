@@ -10,6 +10,8 @@ using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using SpeedDatingBot.Models;
 
+using static SpeedDatingBot.Helpers;
+
 namespace SpeedDatingBot
 {
     class Program
@@ -17,7 +19,6 @@ namespace SpeedDatingBot
         private DiscordSocketClient _client;
         private CommandService _commands;
         private IServiceProvider _services;
-        private Config _config;
 
         static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -25,11 +26,9 @@ namespace SpeedDatingBot
         {
             _client = new DiscordSocketClient();
             _commands = new CommandService();
-            _config = new Config();
             _services = new ServiceCollection()
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
-                .AddSingleton(_config)
                 .AddSingleton<InteractiveService>()
                 .AddSingleton(new DatingSession())
                 .BuildServiceProvider();
@@ -44,7 +43,7 @@ namespace SpeedDatingBot
             _commands.CommandExecuted += OnCommandExecutedAsync;
 
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
-            await _client.LoginAsync(TokenType.Bot, _config.ConfigData.Token);
+            await _client.LoginAsync(TokenType.Bot, Env("Token"));
             await _client.StartAsync();
             await Task.Delay(-1);
         }

@@ -11,12 +11,10 @@ namespace SpeedDatingBot.Module
 {
     public class Welcome : InteractiveBase
     {
-        private Config _config;
         private DiscordSocketClient _client;
 
-        public Welcome(Config config, DiscordSocketClient client)
+        public Welcome(DiscordSocketClient client)
         {
-            _config = config;
             _client = client;
         }
 
@@ -125,7 +123,7 @@ namespace SpeedDatingBot.Module
 
         public async Task UpdateUserRole(SocketUser user, bool isGirl, string nickname)
         {
-            SocketGuild guild = _client.Guilds.First(x => x.Id == _config.ConfigData.GuildId);
+            SocketGuild guild = _client.Guilds.First(x => x.Id == 810245191637270548);
             SocketGuildUser guildUser = guild.GetUser(user.Id);
 
 
