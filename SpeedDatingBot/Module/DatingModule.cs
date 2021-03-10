@@ -116,9 +116,7 @@ namespace SpeedDatingBot.Module
         [Command("ping", RunMode = RunMode.Async)]
         public async Task PingAsync()
         {
-            using var context = new DiscordContext();
-            User[] users = await context.Users.ToArrayAsync();
-            await ReplyAsync(users.Length.ToString());
+            await ReplyAsync("Pong! :ping_pong:");
         }
 
         [Command("stopdating", RunMode = RunMode.Async)]

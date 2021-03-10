@@ -26,7 +26,7 @@ namespace SpeedDatingBot.Module
             DiscordContext context = new DiscordContext();
             bool isNew;
             User newUser;
-            const string timeOutMessage = "You took too long. Please rerun the command by typing welcome.";
+            const string timeOutMessage = "You took too long. Please rerun the command by typing !welcome.";
             
             var userFromDatabase = await context.Users.FindAsync(messageAuthor.Id);
             if (userFromDatabase != null)
@@ -51,7 +51,7 @@ namespace SpeedDatingBot.Module
                 await ReplyAsync(timeOutMessage);
                 return;
             }
-            newUser.FirstName = response.Content;
+            var firstName = response.Content;
 
             await ReplyAsync("What is your Last Name");
             response = await NextMessageAsync();
@@ -60,7 +60,7 @@ namespace SpeedDatingBot.Module
                 await ReplyAsync(timeOutMessage);
                 return;
             }
-            newUser.LastName = response.Content;
+            var lastName = response.Content;
 
             while (true)
             {
@@ -81,6 +81,7 @@ namespace SpeedDatingBot.Module
                     if (response == null)
                     {
                         await ReplyAsync(timeOutMessage);
+                        return;
                     }
                     if (!response.Content.ToLower().StartsWith("y")) continue;
 
@@ -117,7 +118,7 @@ namespace SpeedDatingBot.Module
                 await context.Users.AddAsync(newUser);
             }
             await context.SaveChangesAsync();
-            await UpdateUserRole(messageAuthor, newUser.IsGirl, $"{newUser.FirstName} {newUser.LastName}");
+            await UpdateUserRole(messageAuthor, newUser.IsGirl, $"{firstName} {lastName}");
             await ReplyAsync("Thank you! Enjoy Online Friendshipping");
         }
 
