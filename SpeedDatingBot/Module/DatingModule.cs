@@ -71,8 +71,9 @@ namespace SpeedDatingBot.Module
                         IsGirl = dbUser.IsGirl,
                         Age = dbUser.Age
                     })
-                .Zip(randomNumbers, (person, rand) => new {Person = person, Order = rand + person.Age})
+                .Zip(randomNumbers, (person, rand) => new {Person = person, Order = rand + person.Age, Rand = rand})
                 .OrderBy(x => x.Order)
+                .ThenBy(x => x.Rand)
                 .Select(x => x.Person).ToArray();
             var boys = from person in people where !person.IsGirl select person.GuildUser;
             var girls = from person in people where person.IsGirl select person.GuildUser;
