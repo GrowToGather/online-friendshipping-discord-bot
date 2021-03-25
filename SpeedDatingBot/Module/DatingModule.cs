@@ -42,7 +42,7 @@ namespace SpeedDatingBot.Module
                         new Overwrite(botRoleId, PermissionTarget.Role, Overwrites.BotPermissions)
                     }
             );
-            
+
             _session.DatingCategory = datingCategory;
             _session.InSession = true;
             await StartBreakoutRooms();
@@ -63,23 +63,23 @@ namespace SpeedDatingBot.Module
                 dbUsers = await context.Users.ToArrayAsync();
             }
 
-            int[] randomNumbers = dbUsers.Select(_ => rand.Next(6)).ToArray();
-            var people = dbUsers.Join(waitingRoomUsers, dbUser => dbUser.Id, guildUser => guildUser.Id,
+            var peopleGroup = dbUsers.Join(waitingRoomUsers, dbUser => dbUser.Id, guildUser => guildUser.Id,
                     (dbUser, guildUser) => new
                     {
                         GuildUser = guildUser,
                         IsGirl = dbUser.IsGirl,
                         Age = dbUser.Age
                     })
-                .Zip(randomNumbers, (person, rand) => new {Person = person, Order = rand + person.Age, Rand = rand})
-                .OrderBy(x => x.Order)
-                .ThenBy(x => x.Rand)
-                .Select(x => x.Person).ToArray();
-            var boys = from person in people where !person.IsGirl select person.GuildUser;
-            var girls = from person in people where person.IsGirl select person.GuildUser;
-            foreach (var (boy, girl) in boys.Zip(girls))
+                .GroupBy(x => x.Age > 25);
+            foreach (var peoplegrouping in peopleGroup)
             {
-                await MoveToNewRoomAsync(boy, girl);
+                var people = peoplegrouping.ToArray();
+                var boys = from p in people where !p.IsGirl select p.GuildUser;
+                var girls = from p in people where p.IsGirl select p.GuildUser;
+                foreach (var (boy, girl) in boys.Zip(girls))
+                {
+                    await MoveToNewRoomAsync(boy, girl);
+                }
             }
         }
 
@@ -92,6 +92,7 @@ namespace SpeedDatingBot.Module
                 if (!_session.InSession) return;
                 await SwapRooms();
             }
+
             await WaitForBreakoutRooms(minutes);
         }
 
@@ -126,7 +127,7 @@ namespace SpeedDatingBot.Module
         public async Task EndDatingSession()
         {
             if (!_session.InSession) return;
-            
+
             await EndBreakoutSession();
             await _session.DatingCategory.DeleteAsync();
             _session.DatingCategory = null;
@@ -146,7 +147,6 @@ namespace SpeedDatingBot.Module
             }
         }
 
-        
 
         [Command("swap", RunMode = RunMode.Async)]
         [Summary("Swap people to another room")]
