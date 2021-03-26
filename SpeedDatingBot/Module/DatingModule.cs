@@ -74,6 +74,7 @@ namespace SpeedDatingBot.Module
             foreach (var peoplegrouping in peopleGroup)
             {
                 var people = peoplegrouping.ToArray();
+                people.Shuffle();
                 var boys = from p in people where !p.IsGirl select p.GuildUser;
                 var girls = from p in people where p.IsGirl select p.GuildUser;
                 foreach (var (boy, girl) in boys.Zip(girls))
