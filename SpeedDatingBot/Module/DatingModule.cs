@@ -55,7 +55,6 @@ namespace SpeedDatingBot.Module
 
         private async Task StartBreakoutRooms()
         {
-            Random rand = new Random();
             var waitingRoomUsers = Context.Guild.GetVoiceChannel(_waitingRoomId).Users;
             User[] dbUsers;
             await using (DiscordContext context = new DiscordContext())
