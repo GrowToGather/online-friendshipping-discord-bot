@@ -127,6 +127,7 @@ namespace SpeedDatingBot.Module
             foreach (SocketVoiceChannel channel in socketVoiceChannels)
             {
                 await channel.RemoveVoiceChannelAsync(Context.Guild.GetVoiceChannel(_waitingRoomId));
+                await Task.Delay(500);
             }
         }
 
