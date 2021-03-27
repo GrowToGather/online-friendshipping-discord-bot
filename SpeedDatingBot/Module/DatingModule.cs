@@ -55,32 +55,14 @@ namespace SpeedDatingBot.Module
 
         private async Task StartBreakoutRooms()
         {
-            var waitingRoomUsers = Context.Guild.GetVoiceChannel(_waitingRoomId).Users;
-            User[] dbUsers;
-            await using (DiscordContext context = new DiscordContext())
+            var waitingRoomUsers = Context.Guild.GetVoiceChannel(_waitingRoomId).Users.ToArray();
+            waitingRoomUsers.Shuffle();
+            var boys = from user in waitingRoomUsers where user.Roles.Any(x => x.Name == "Boy") select user;
+            var girls = from user in waitingRoomUsers where user.Roles.Any(x => x.Name == "Girl") select user;
+            foreach (var (boy, girl) in boys.Zip(girls))
             {
-                dbUsers = await context.Users.ToArrayAsync();
-            }
-
-            var peopleGroup = dbUsers.Join(waitingRoomUsers, dbUser => dbUser.Id, guildUser => guildUser.Id,
-                    (dbUser, guildUser) => new
-                    {
-                        GuildUser = guildUser,
-                        IsGirl = dbUser.IsGirl,
-                        Age = dbUser.Age
-                    })
-                .GroupBy(x => x.Age > 25);
-            foreach (var peoplegrouping in peopleGroup)
-            {
-                var people = peoplegrouping.ToArray();
-                people.Shuffle();
-                var boys = from p in people where !p.IsGirl select p.GuildUser;
-                var girls = from p in people where p.IsGirl select p.GuildUser;
-                foreach (var (boy, girl) in boys.Zip(girls))
-                {
-                    await MoveToNewRoomAsync(boy, girl);
-                }
-            }
+                await MoveToNewRoomAsync(boy, girl);
+            } 
         }
 
         private async Task TimeSwapRooms(int minutes, int sessions)
