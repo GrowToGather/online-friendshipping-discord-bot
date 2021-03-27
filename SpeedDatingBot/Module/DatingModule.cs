@@ -62,6 +62,7 @@ namespace SpeedDatingBot.Module
             foreach (var (boy, girl) in boys.Zip(girls))
             {
                 await MoveToNewRoomAsync(boy, girl);
+                await Task.Delay(500);
             } 
         }
 
